@@ -1,10 +1,13 @@
 import React, { useRef, useState } from 'react';
 
+const normalize = (str) => str.replace(/[^a-zA-Z]/g, '').toLowerCase();
+
 const GameBoard = ({ players, currentPlayer, word, onNext }) => {
   const synthRef = useRef(window.speechSynthesis);
   const [isListening, setIsListening] = useState(false);
   const [spokenText, setSpokenText] = useState('');
   const [error, setError] = useState(null);
+  const [feedback, setFeedback] = useState(null);
 
   // Speech Synthesis
   const handleSpeakWord = () => {
@@ -21,6 +24,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
   const handleStartListening = () => {
     setError(null);
     setSpokenText('');
+    setFeedback(null);
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       setError('Speech recognition is not supported in this browser.');
       return;
@@ -35,6 +39,12 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
       const transcript = event.results[0][0].transcript;
       setSpokenText(transcript);
       setIsListening(false);
+      // Check spelling
+      if (normalize(transcript) === normalize(word)) {
+        setFeedback('✅ Correct!');
+      } else {
+        setFeedback('❌ Incorrect.');
+      }
     };
     recognition.onerror = (event) => {
       setError('Error: ' + event.error);
@@ -60,9 +70,12 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
             <strong>Your spelling:</strong> {spokenText}
           </div>
         )}
+        {feedback && (
+          <div style={{ fontWeight: 'bold', marginTop: '0.5em' }}>{feedback}</div>
+        )}
         {error && <div style={{ color: 'red' }}>{error}</div>}
       </div>
-      {/* TODO: Add feedback and scoring */}
+      {/* TODO: Add scoring and reveal correct spelling */}
       <button onClick={onNext}>Next Turn</button>
     </div>
   );
