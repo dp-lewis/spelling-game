@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 const normalize = (str) => str.replace(/[^a-zA-Z]/g, '').toLowerCase();
 
@@ -19,6 +19,26 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
   const [spokenText, setSpokenText] = useState('');
   const [error, setError] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [hasSpoken, setHasSpoken] = useState(false);
+
+  // Speak the word automatically when the component is first shown (word changes)
+  useEffect(() => {
+    if (word && !hasSpoken) {
+      speak(word);
+      setHasSpoken(true);
+    }
+  }, [word, hasSpoken]);
+
+  // Reset hasSpoken when moving to the next word
+  useEffect(() => {
+    setHasSpoken(false);
+  }, [word]);
+
+  // Clear spokenText and feedback when moving to the next word/turn
+  useEffect(() => {
+    setSpokenText('');
+    setFeedback(null);
+  }, [word]);
 
   const handleSpeakWord = () => {
     if (!word) return;
@@ -51,10 +71,22 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
         setFeedback('✅ Correct!');
       } else {
         resultText = `Incorrect. The correct spelling is ${word}.`;
-        setFeedback('❌ Incorrect.');
+        setFeedback(
+          <span>
+            ❌ Incorrect.<br />
+            <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
+            <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
+          </span>
+        );
       }
       // Speak the result
       speak(resultText);
+      // If incorrect, spell out the word letter by letter
+      if (normalize(transcript) !== normalize(word)) {
+        setTimeout(() => {
+          speak(word.split('').join(' '));
+        }, 1200);
+      }
     };
     recognition.onerror = (event) => {
       setError('Error: ' + event.error);
