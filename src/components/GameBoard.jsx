@@ -10,14 +10,18 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
   const [feedback, setFeedback] = useState(null);
 
   // Speech Synthesis
-  const handleSpeakWord = () => {
-    if (!word) return;
+  const speak = (text) => {
     if (synthRef.current.speaking) {
       synthRef.current.cancel();
     }
-    const utter = new window.SpeechSynthesisUtterance(word);
+    const utter = new window.SpeechSynthesisUtterance(text);
     utter.lang = 'en-US';
     synthRef.current.speak(utter);
+  };
+
+  const handleSpeakWord = () => {
+    if (!word) return;
+    speak(word);
   };
 
   // Speech Recognition
@@ -40,11 +44,16 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
       setSpokenText(transcript);
       setIsListening(false);
       // Check spelling
+      let resultText;
       if (normalize(transcript) === normalize(word)) {
+        resultText = 'Correct!';
         setFeedback('✅ Correct!');
       } else {
+        resultText = `Incorrect. The correct spelling is ${word}.`;
         setFeedback('❌ Incorrect.');
       }
+      // Speak the result
+      speak(resultText);
     };
     recognition.onerror = (event) => {
       setError('Error: ' + event.error);
@@ -75,7 +84,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
         )}
         {error && <div style={{ color: 'red' }}>{error}</div>}
       </div>
-      {/* TODO: Add scoring and reveal correct spelling */}
+      {/* TODO: Add scoring and reveal correct spelling visually */}
       <button onClick={onNext}>Next Turn</button>
     </div>
   );
