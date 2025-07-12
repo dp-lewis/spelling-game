@@ -20,6 +20,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
   const [error, setError] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [hasSpoken, setHasSpoken] = useState(false);
+  const [countdown, setCountdown] = useState(null);
 
   // Speak the word automatically when the component is first shown (word changes)
   useEffect(() => {
@@ -39,6 +40,25 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
     setSpokenText('');
     setFeedback(null);
   }, [word]);
+
+  // Start a 5-second countdown after a spelling attempt
+  useEffect(() => {
+    if (feedback) {
+      setCountdown(5);
+      const interval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === 1) {
+            clearInterval(interval);
+            setCountdown(null);
+            onNext();
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [feedback, onNext]);
 
   const handleSpeakWord = () => {
     if (!word) return;
@@ -116,9 +136,13 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
           <div style={{ fontWeight: 'bold', marginTop: '0.5em' }}>{feedback}</div>
         )}
         {error && <div style={{ color: 'red' }}>{error}</div>}
+        {countdown !== null && (
+          <div style={{ color: 'gray', marginTop: '1em' }}>
+            Next player in {countdown} second{countdown === 1 ? '' : 's'}...
+          </div>
+        )}
       </div>
-      {/* TODO: Add scoring and reveal correct spelling visually */}
-      <button onClick={onNext}>Next Turn</button>
+      <button onClick={onNext} disabled={countdown !== null}>Next Turn</button>
     </div>
   );
 };
