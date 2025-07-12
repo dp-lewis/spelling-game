@@ -2,22 +2,23 @@ import React, { useRef, useState } from 'react';
 
 const normalize = (str) => str.replace(/[^a-zA-Z]/g, '').toLowerCase();
 
+// Chrome-compatible speech synthesis workaround: cancel before speak
+function speak(text) {
+  const synth = window.speechSynthesis;
+  const utter = new window.SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  // Chrome workaround: cancel before speak
+  synth.cancel();
+  setTimeout(() => {
+    synth.speak(utter);
+  }, 100);
+}
+
 const GameBoard = ({ players, currentPlayer, word, onNext }) => {
-  const synthRef = useRef(window.speechSynthesis);
   const [isListening, setIsListening] = useState(false);
   const [spokenText, setSpokenText] = useState('');
   const [error, setError] = useState(null);
   const [feedback, setFeedback] = useState(null);
-
-  // Speech Synthesis
-  const speak = (text) => {
-    if (synthRef.current.speaking) {
-      synthRef.current.cancel();
-    }
-    const utter = new window.SpeechSynthesisUtterance(text);
-    utter.lang = 'en-US';
-    synthRef.current.speak(utter);
-  };
 
   const handleSpeakWord = () => {
     if (!word) return;
