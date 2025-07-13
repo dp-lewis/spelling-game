@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const DEFAULT_WORDS = ['example', 'banana', 'computer', 'giraffe', 'umbrella'];
+const NAMES_KEY = 'spellingbee_player_names';
 
 const PlayerSetup = ({ onStart }) => {
   const [wordsText, setWordsText] = useState(DEFAULT_WORDS.join('\n'));
-  const [playerNames, setPlayerNames] = useState(['', '']);
+  const [playerNames, setPlayerNames] = useState(() => {
+    const saved = localStorage.getItem(NAMES_KEY);
+    return saved ? JSON.parse(saved) : ['', ''];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(NAMES_KEY, JSON.stringify(playerNames));
+  }, [playerNames]);
 
   const getWords = () => {
     return wordsText

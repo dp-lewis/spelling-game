@@ -23,18 +23,21 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
   const [countdown, setCountdown] = useState(null);
   const firstRender = useRef(true);
 
-  // Speak the word automatically when the component is first shown (word changes)
+  // Speak the player's name and the word automatically when the component is first shown (word changes)
   useEffect(() => {
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
-    // Only auto-speak if hasSpoken is false and spokenText is empty (i.e., not after a spelling attempt)
     if (word && !hasSpoken && !spokenText) {
-      speak(word);
+      if (currentPlayer?.name) {
+        speak(`It's ${currentPlayer.name}'s go. The word is ${word}`);
+      } else {
+        speak(word);
+      }
       setHasSpoken(true);
     }
-  }, [word, hasSpoken, spokenText]);
+  }, [word, hasSpoken, spokenText, currentPlayer]);
 
   // Reset hasSpoken when moving to the next word
   useEffect(() => {
