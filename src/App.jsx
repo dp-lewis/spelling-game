@@ -135,6 +135,9 @@ function App() {
 
   return (
     <div className="App">
+      <h1 style={{ textAlign: 'center', margin: '1.2em 0 0.5em 0', fontFamily: 'cursive', fontWeight: 700, fontSize: '2.3em', letterSpacing: '0.04em', color: '#e6b800', textShadow: '1px 2px 6px #3332' }}>
+        Spelling Showdown
+      </h1>
       {gameState === 'setup' && <PlayerSetup onStart={handleStart} />}
       {gameState === 'playing' && (
         <>
