@@ -35,6 +35,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
   const [countdown, setCountdown] = useState(null);
   const [attempts, setAttempts] = useState(0);
   const firstRender = useRef(true);
+  const recognitionRef = useRef(null);
 
   // Speak the player's name and the word automatically when the component is first shown (word changes)
   useEffect(() => {
@@ -52,19 +53,12 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
     }
   }, [word, hasSpoken, spokenText, currentPlayer]);
 
-  // Reset hasSpoken when moving to the next word
-  useEffect(() => {
-    setHasSpoken(false);
-  }, [word]);
-
-  // Clear spokenText and feedback when moving to the next word/turn
+  // Reset all state when moving to the next word/turn
   useEffect(() => {
     setSpokenText('');
     setFeedback(null);
-  }, [word]);
-
-  // Reset attempts on new word
-  useEffect(() => {
+    setHasSpoken(false);
+    setCountdown(null);
     setAttempts(0);
   }, [word]);
 
@@ -123,11 +117,14 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
     recognition.lang = 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    recognition.continuous = false; // Only process one result per click
+    recognitionRef.current = recognition;
     setIsListening(true);
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       setSpokenText(transcript);
       setIsListening(false);
+      recognition.stop();
       const correct = normalize(word);
       const tokens = transcript.replace(/[^a-zA-Z ]/g, '').split(' ').map(s => s.trim().toLowerCase()).filter(Boolean);
       // If only one token and it matches the word, reject
@@ -156,25 +153,31 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
       const spelled = tokens.join('');
       if (spelled === correct) {
         setFeedback('✅ Correct!');
-        speak('Correct!');
+        setTimeout(() => speak('Correct!'), 100);
       } else {
-        const newAttempts = attempts + 1;
-        setAttempts(newAttempts);
-        setFeedback(
-          <span>
-            ❌ Incorrect.<br />
-            <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
-            <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
-            {newAttempts < 2
-              ? <><br />Try again! (Attempt {newAttempts} of 2)</>
-              : <><br />No more attempts!</>}
-          </span>
-        );
-        if (newAttempts < 2) {
-          speak(`Incorrect. The correct spelling is ${word}. Try again.`);
-        } else {
-          speak(`Incorrect. The correct spelling is ${word}. No more attempts.`);
-        }
+        setAttempts(prev => {
+          const newAttempts = prev + 1;
+          if (newAttempts < 2) {
+            setFeedback(
+              <span>
+                ❌ Incorrect.<br />
+                Try again! (Attempt {newAttempts} of 2)
+              </span>
+            );
+            setTimeout(() => speak('Incorrect. Try again.'), 100);
+          } else {
+            setFeedback(
+              <span>
+                ❌ Incorrect.<br />
+                <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
+                <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
+                <br />No more attempts!
+              </span>
+            );
+            setTimeout(() => speak(`Incorrect. The correct spelling is ${word}. No more attempts.`), 100);
+          }
+          return newAttempts;
+        });
       }
     };
     recognition.onerror = (event) => {
@@ -187,6 +190,12 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
     recognition.start();
   };
 
+  const handleStopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
+
   return (
     <div>
       <h2>Game Board</h2>
@@ -196,6 +205,11 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
         <button onClick={handleStartListening} disabled={isListening || !word}>
           {isListening ? 'Listening...' : 'Spell the Word (Voice)'}
         </button>
+        {isListening && (
+          <button onClick={handleStopListening} style={{ marginLeft: 8 }}>
+            Stop Listening
+          </button>
+        )}
         {spokenText && (
           <div>
             <strong>Your spelling:</strong> {spokenText}
