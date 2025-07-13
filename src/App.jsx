@@ -6,12 +6,6 @@ import EndGame from './components/EndGame';
 import { WORDS } from './words';
 import './App.css';
 
-function getRandomWord(usedWords) {
-  const available = WORDS.filter(w => !usedWords.includes(w));
-  if (available.length === 0) return null;
-  return available[Math.floor(Math.random() * available.length)];
-}
-
 function App() {
   // Game states: 'setup', 'playing', 'end'
   const [gameState, setGameState] = useState('setup');
@@ -20,25 +14,31 @@ function App() {
   const [winner, setWinner] = useState(null);
   const [usedWords, setUsedWords] = useState([]);
   const [currentWord, setCurrentWord] = useState(null);
+  const [customWords, setCustomWords] = useState(null);
 
-  // Placeholder handlers for navigation
-  const handleStart = () => {
-    // TODO: collect player names from PlayerSetup
+  // Updated handleStart to accept custom words
+  const handleStart = (words) => {
     setPlayers([
       { name: 'Player 1', score: 0 },
       { name: 'Player 2', score: 0 },
     ]);
-    const firstWord = getRandomWord([]);
+    setCustomWords(words);
+    const firstWord = getRandomWord([], words);
     setCurrentWord(firstWord);
     setUsedWords([firstWord]);
     setGameState('playing');
   };
 
+  // Update getRandomWord to use customWords if provided
+  function getRandomWord(usedWords, wordList) {
+    const available = (wordList || customWords || WORDS).filter(w => !usedWords.includes(w));
+    if (available.length === 0) return null;
+    return available[Math.floor(Math.random() * available.length)];
+  }
+
   const handleNextTurn = () => {
-    // TODO: implement turn logic and end condition
     const nextIdx = (currentPlayerIdx + 1) % players.length;
     setCurrentPlayerIdx(nextIdx);
-    // Pick a new word for the next turn
     const nextWord = getRandomWord(usedWords);
     if (nextWord) {
       setCurrentWord(nextWord);
@@ -46,7 +46,6 @@ function App() {
     } else {
       setGameState('end');
     }
-    // Example: end after 4 turns
     if (nextIdx === 0) setGameState('end');
   };
 
