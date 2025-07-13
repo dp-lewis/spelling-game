@@ -128,9 +128,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
       const transcript = event.results[0][0].transcript;
       setSpokenText(transcript);
       setIsListening(false);
-      // Strict letter-by-letter enforcement
       const correct = normalize(word);
-      // Split transcript into tokens (by space)
       const tokens = transcript.replace(/[^a-zA-Z ]/g, '').split(' ').map(s => s.trim().toLowerCase()).filter(Boolean);
       // If only one token and it matches the word, reject
       if (tokens.length === 1 && tokens[0] === correct) {
@@ -141,17 +139,6 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
           </span>
         );
         speak('Please spell the word letter by letter, not as a whole word. Try again.');
-        return;
-      }
-      // If number of tokens doesn't match word length, reject
-      if (tokens.length !== correct.length) {
-        setFeedback(
-          <span>
-            ❌ Please spell out <b>each letter</b> of the word, one at a time. You said {tokens.length} letter{tokens.length === 1 ? '' : 's'}, but the word has {correct.length}.<br />
-            Try again!
-          </span>
-        );
-        speak('Please spell out each letter of the word, one at a time. Try again.');
         return;
       }
       // If any token is not a single letter, reject
@@ -165,7 +152,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
         speak('Each part must be a single letter. Try again.');
         return;
       }
-      // Join tokens and compare
+      // At this point, input is all single letters (any length)
       const spelled = tokens.join('');
       if (spelled === correct) {
         setFeedback('✅ Correct!');
@@ -173,25 +160,19 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
       } else {
         const newAttempts = attempts + 1;
         setAttempts(newAttempts);
+        setFeedback(
+          <span>
+            ❌ Incorrect.<br />
+            <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
+            <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
+            {newAttempts < 2
+              ? <><br />Try again! (Attempt {newAttempts} of 2)</>
+              : <><br />No more attempts!</>}
+          </span>
+        );
         if (newAttempts < 2) {
-          setFeedback(
-            <span>
-              ❌ Incorrect.<br />
-              <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
-              <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
-              <br />Try again! (Attempt {newAttempts} of 2)
-            </span>
-          );
           speak(`Incorrect. The correct spelling is ${word}. Try again.`);
         } else {
-          setFeedback(
-            <span>
-              ❌ Incorrect.<br />
-              <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
-              <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
-              <br />No more attempts!
-            </span>
-          );
           speak(`Incorrect. The correct spelling is ${word}. No more attempts.`);
         }
       }
