@@ -15,10 +15,11 @@ function spokenToLetters(str) {
 }
 
 // Chrome-compatible speech synthesis workaround: cancel before speak
-function speak(text) {
+function speak(text, onEnd) {
   const synth = window.speechSynthesis;
   const utter = new window.SpeechSynthesisUtterance(text);
   utter.lang = 'en-US';
+  if (onEnd) utter.onend = onEnd;
   // Chrome workaround: cancel before speak
   synth.cancel();
   setTimeout(() => {
@@ -64,7 +65,6 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
 
   // Start a 5-second countdown and advance only if correct or after 2nd incorrect
   useEffect(() => {
-    // Only start countdown if correct, or after 2nd failed attempt
     if (feedback === '✅ Correct!') {
       setCountdown(5);
       const interval = setInterval(() => {
@@ -73,22 +73,6 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
             clearInterval(interval);
             setCountdown(null);
             onNext(true);
-            return null;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-    // If feedback is a React element (incorrect) and attempts === 2, start countdown
-    if (feedback && typeof feedback !== 'string' && attempts === 2) {
-      setCountdown(3);
-      const interval = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            clearInterval(interval);
-            setCountdown(null);
-            onNext(false);
             return null;
           }
           return prev - 1;
@@ -174,7 +158,24 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
                 <br />No more attempts!
               </span>
             );
-            setTimeout(() => speak(`Incorrect. The correct spelling is ${word}. No more attempts.`), 100);
+            // Wait for both messages to finish before advancing
+            speak(`Incorrect. The correct spelling is ${word}. No more attempts.`, () => {
+              speak(word.split('').join(' ... '), () => {
+                // Now start the countdown and advance
+                setCountdown(3);
+                const interval = setInterval(() => {
+                  setCountdown((prev) => {
+                    if (prev === 1) {
+                      clearInterval(interval);
+                      setCountdown(null);
+                      onNext(false);
+                      return null;
+                    }
+                    return prev - 1;
+                  });
+                }, 1000);
+              });
+            });
           }
           return newAttempts;
         });
