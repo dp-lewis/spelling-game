@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { WORDS } from '../words';
 
-const DEFAULT_WORDS = ['example', 'banana', 'computer', 'giraffe', 'umbrella'];
+const DEFAULT_WORDS = WORDS;
 const NAMES_KEY = 'spellingbee_player_names';
 const PLAYER_WORDS_KEY = 'spellingbee_player_wordlists';
 
