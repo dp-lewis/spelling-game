@@ -9,7 +9,8 @@ import './App.css';
 function App() {
   // Game states: 'setup', 'playing', 'end'
   const [gameState, setGameState] = useState('setup');
-  const [players, setPlayers] = useState([]); // [{ name, score }]
+  // Add 'active' property to each player
+  const [players, setPlayers] = useState([]); // [{ name, score, active }]
   const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
   const [winner, setWinner] = useState(null);
   const [usedWords, setUsedWords] = useState([]);
@@ -19,12 +20,14 @@ function App() {
 
   // Updated handleStart to accept custom words and player names
   const handleStart = (words, names) => {
-    setPlayers(names.map(name => ({ name, score: 0 })));
+    setPlayers(names.map(name => ({ name, score: 0, active: true })));
     setCustomWords(words);
     setCustomNames(names);
     const firstWord = getRandomWord([], words);
     setCurrentWord(firstWord);
     setUsedWords([firstWord]);
+    setCurrentPlayerIdx(0);
+    setWinner(null);
     setGameState('playing');
   };
 
@@ -35,9 +38,55 @@ function App() {
     return available[Math.floor(Math.random() * available.length)];
   }
 
-  const handleNextTurn = () => {
-    const nextIdx = (currentPlayerIdx + 1) % players.length;
+  // Knockout logic: handle result, skip knocked-out players, end game if one left
+  const handleNextTurn = (isCorrect) => {
+    setPlayers(prevPlayers => {
+      const updated = [...prevPlayers];
+      if (!isCorrect) {
+        updated[currentPlayerIdx] = {
+          ...updated[currentPlayerIdx],
+          active: false
+        };
+      } else {
+        updated[currentPlayerIdx] = {
+          ...updated[currentPlayerIdx],
+          score: updated[currentPlayerIdx].score + 1
+        };
+      }
+      return updated;
+    });
+
+    // Find next active player
+    let nextIdx = currentPlayerIdx;
+    let found = false;
+    let activeCount = 0;
+    let lastActiveIdx = -1;
+    players.forEach((p, idx) => {
+      if (p.active || (idx === currentPlayerIdx && isCorrect)) {
+        activeCount++;
+        lastActiveIdx = idx;
+      }
+    });
+
+    // If only one active player, end game
+    if (activeCount === 1) {
+      setWinner(players[lastActiveIdx].name);
+      setGameState('end');
+      return;
+    }
+
+    // Find next active player
+    for (let i = 1; i <= players.length; i++) {
+      const idx = (currentPlayerIdx + i) % players.length;
+      if (players[idx].active || (idx === currentPlayerIdx && isCorrect)) {
+        nextIdx = idx;
+        found = true;
+        break;
+      }
+    }
     setCurrentPlayerIdx(nextIdx);
+
+    // Get next word
     const nextWord = getRandomWord(usedWords);
     if (nextWord) {
       setCurrentWord(nextWord);
@@ -45,7 +94,6 @@ function App() {
     } else {
       setGameState('end');
     }
-    if (nextIdx === 0) setGameState('end');
   };
 
   const handleRestart = () => {
@@ -69,7 +117,7 @@ function App() {
           <Scoreboard players={players} />
         </>
       )}
-      {gameState === 'end' && <EndGame winner={winner} onRestart={handleRestart} />}
+      {gameState === 'end' && <EndGame winner={winner} players={players} onRestart={handleRestart} />}
     </div>
   );
 }

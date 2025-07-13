@@ -52,14 +52,15 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
 
   // Start a 5-second countdown after a spelling attempt
   useEffect(() => {
-    if (feedback) {
+    if (feedback !== null) {
       setCountdown(5);
       const interval = setInterval(() => {
         setCountdown((prev) => {
           if (prev === 1) {
             clearInterval(interval);
             setCountdown(null);
-            onNext();
+            // Call onNext with result: true if correct, false if incorrect
+            onNext(feedback === '✅ Correct!');
             return null;
           }
           return prev - 1;
@@ -152,7 +153,8 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
           </div>
         )}
       </div>
-      <button onClick={onNext} disabled={countdown !== null}>Next Turn</button>
+      {/* Change Next Turn button to call onNext with null (manual advance) */}
+      <button onClick={() => onNext(null)} disabled={countdown !== null}>Next Turn</button>
     </div>
   );
 };
