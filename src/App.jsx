@@ -15,14 +15,13 @@ function App() {
   const [usedWords, setUsedWords] = useState([]);
   const [currentWord, setCurrentWord] = useState(null);
   const [customWords, setCustomWords] = useState(null);
+  const [customNames, setCustomNames] = useState(null);
 
-  // Updated handleStart to accept custom words
-  const handleStart = (words) => {
-    setPlayers([
-      { name: 'Player 1', score: 0 },
-      { name: 'Player 2', score: 0 },
-    ]);
+  // Updated handleStart to accept custom words and player names
+  const handleStart = (words, names) => {
+    setPlayers(names.map(name => ({ name, score: 0 })));
     setCustomWords(words);
+    setCustomNames(names);
     const firstWord = getRandomWord([], words);
     setCurrentWord(firstWord);
     setUsedWords([firstWord]);

@@ -4,6 +4,7 @@ const DEFAULT_WORDS = ['example', 'banana', 'computer', 'giraffe', 'umbrella'];
 
 const PlayerSetup = ({ onStart }) => {
   const [wordsText, setWordsText] = useState(DEFAULT_WORDS.join('\n'));
+  const [playerNames, setPlayerNames] = useState(['', '']);
 
   const getWords = () => {
     return wordsText
@@ -12,10 +13,25 @@ const PlayerSetup = ({ onStart }) => {
       .filter(w => w.length > 0);
   };
 
+  const handleNameChange = (idx, value) => {
+    const updated = [...playerNames];
+    updated[idx] = value;
+    setPlayerNames(updated);
+  };
+
+  const handleAddPlayer = () => {
+    if (playerNames.length < 4) setPlayerNames([...playerNames, '']);
+  };
+
+  const handleRemovePlayer = (idx) => {
+    if (playerNames.length > 2) setPlayerNames(playerNames.filter((_, i) => i !== idx));
+  };
+
   const handleStartGame = () => {
     const words = getWords();
-    if (words.length > 0) {
-      onStart(words);
+    const names = playerNames.map(n => n.trim()).filter(n => n.length > 0);
+    if (words.length > 0 && names.length >= 2 && names.length <= 4) {
+      onStart(words, names);
     }
   };
 
@@ -23,6 +39,27 @@ const PlayerSetup = ({ onStart }) => {
     <div>
       <h2>Player Setup</h2>
       <div>
+        <label><strong>Player Names (2-4):</strong></label>
+        {playerNames.map((name, idx) => (
+          <div key={idx} style={{ marginBottom: 4 }}>
+            <input
+              type="text"
+              value={name}
+              onChange={e => handleNameChange(idx, e.target.value)}
+              placeholder={`Player ${idx + 1} name`}
+              style={{ width: 180, marginRight: 8 }}
+              maxLength={20}
+            />
+            {playerNames.length > 2 && (
+              <button onClick={() => handleRemovePlayer(idx)} aria-label="Remove player">×</button>
+            )}
+          </div>
+        ))}
+        {playerNames.length < 4 && (
+          <button onClick={handleAddPlayer} style={{ marginBottom: 8 }}>Add Player</button>
+        )}
+      </div>
+      <div style={{ marginTop: 16 }}>
         <label htmlFor="words-textarea"><strong>Enter your word list (one per line, or separated by comma/semicolon):</strong></label>
         <br />
         <textarea
@@ -34,7 +71,7 @@ const PlayerSetup = ({ onStart }) => {
           style={{ fontSize: '1.1em', padding: '0.5em', resize: 'vertical' }}
         />
       </div>
-      <button onClick={handleStartGame} disabled={getWords().length === 0} style={{ marginTop: '1em' }}>
+      <button onClick={handleStartGame} disabled={getWords().length === 0 || playerNames.some(n => !n.trim())} style={{ marginTop: '1em' }}>
         Start Game
       </button>
       <div style={{ marginTop: '1em', color: '#666', fontSize: '0.95em' }}>
