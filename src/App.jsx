@@ -9,50 +9,70 @@ import './App.css';
 function App() {
   // Game states: 'setup', 'playing', 'end'
   const [gameState, setGameState] = useState('setup');
-  // Add 'active' property to each player
-  const [players, setPlayers] = useState([]); // [{ name, score, active }]
+  // Add per-player usedWords and wordList
+  const [players, setPlayers] = useState([]); // [{ name, score, active, wordList, usedWords }]
   const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
   const [winner, setWinner] = useState(null);
-  const [usedWords, setUsedWords] = useState([]);
+  const [usedWords, setUsedWords] = useState([]); // global used words
   const [currentWord, setCurrentWord] = useState(null);
   const [customWords, setCustomWords] = useState(null);
   const [customNames, setCustomNames] = useState(null);
 
-  // Updated handleStart to accept custom words and player names
-  const handleStart = (words, names) => {
-    setPlayers(names.map(name => ({ name, score: 0, active: true })));
+  // Updated handleStart to accept custom words, player names, and per-player word lists
+  const handleStart = (words, names, perPlayerWords) => {
+    setPlayers(names.map((name, idx) => ({
+      name,
+      score: 0,
+      active: true,
+      wordList: (perPlayerWords && perPlayerWords[idx] && perPlayerWords[idx].length > 0)
+        ? perPlayerWords[idx]
+        : words.slice(),
+      usedWords: []
+    })));
     setCustomWords(words);
     setCustomNames(names);
-    const firstWord = getRandomWord([], words);
+    // Draw first word for first player
+    const firstWord = getNextWord(
+      (perPlayerWords && perPlayerWords[0] && perPlayerWords[0].length > 0) ? perPlayerWords[0] : words,
+      [],
+      words,
+      []
+    );
     setCurrentWord(firstWord);
-    setUsedWords([firstWord]);
+    setUsedWords(firstWord ? [firstWord] : []);
     setCurrentPlayerIdx(0);
     setWinner(null);
     setGameState('playing');
   };
 
-  // Update getRandomWord to use customWords if provided
-  function getRandomWord(usedWords, wordList) {
-    const available = (wordList || customWords || WORDS).filter(w => !usedWords.includes(w));
-    if (available.length === 0) return null;
-    return available[Math.floor(Math.random() * available.length)];
+  // Get next word for a player, fallback to central/global list if needed
+  function getNextWord(playerWordList, playerUsed, globalWordList, globalUsed) {
+    // Try player's own list first
+    const availablePlayer = playerWordList.filter(w => !playerUsed.includes(w) && !globalUsed.includes(w));
+    if (availablePlayer.length > 0) {
+      return availablePlayer[Math.floor(Math.random() * availablePlayer.length)];
+    }
+    // Fallback to global list
+    const availableGlobal = (globalWordList || WORDS).filter(w => !globalUsed.includes(w));
+    if (availableGlobal.length === 0) return null;
+    return availableGlobal[Math.floor(Math.random() * availableGlobal.length)];
   }
 
   // Knockout logic: handle result, skip knocked-out players, end game if one left
   const handleNextTurn = (isCorrect) => {
     setPlayers(prevPlayers => {
       const updated = [...prevPlayers];
+      const player = updated[currentPlayerIdx];
       if (!isCorrect) {
-        updated[currentPlayerIdx] = {
-          ...updated[currentPlayerIdx],
-          active: false
-        };
+        player.active = false;
       } else {
-        updated[currentPlayerIdx] = {
-          ...updated[currentPlayerIdx],
-          score: updated[currentPlayerIdx].score + 1
-        };
+        player.score += 1;
       }
+      // Mark current word as used for this player
+      if (currentWord) {
+        player.usedWords = [...(player.usedWords || []), currentWord];
+      }
+      updated[currentPlayerIdx] = player;
       return updated;
     });
 
@@ -86,14 +106,24 @@ function App() {
     }
     setCurrentPlayerIdx(nextIdx);
 
-    // Get next word
-    const nextWord = getRandomWord(usedWords);
-    if (nextWord) {
-      setCurrentWord(nextWord);
-      setUsedWords([...usedWords, nextWord]);
-    } else {
-      setGameState('end');
-    }
+    // Get next word for the next player
+    setPlayers(prevPlayers => {
+      const updated = [...prevPlayers];
+      const nextPlayer = updated[nextIdx];
+      const nextWord = getNextWord(
+        nextPlayer.wordList,
+        nextPlayer.usedWords,
+        customWords || WORDS,
+        usedWords
+      );
+      if (nextWord) {
+        setCurrentWord(nextWord);
+        setUsedWords(prev => [...prev, nextWord]);
+      } else {
+        setGameState('end');
+      }
+      return updated;
+    });
   };
 
   const handleRestart = () => {
