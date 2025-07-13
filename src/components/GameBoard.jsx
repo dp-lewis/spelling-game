@@ -33,6 +33,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
   const [feedback, setFeedback] = useState(null);
   const [hasSpoken, setHasSpoken] = useState(false);
   const [countdown, setCountdown] = useState(null);
+  const [attempts, setAttempts] = useState(0);
   const firstRender = useRef(true);
 
   // Speak the player's name and the word automatically when the component is first shown (word changes)
@@ -62,17 +63,22 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
     setFeedback(null);
   }, [word]);
 
-  // Start a 5-second countdown after a spelling attempt
+  // Reset attempts on new word
   useEffect(() => {
-    if (feedback !== null) {
+    setAttempts(0);
+  }, [word]);
+
+  // Start a 5-second countdown and advance only if correct or after 2nd incorrect
+  useEffect(() => {
+    // Only start countdown if correct, or after 2nd failed attempt
+    if (feedback === '✅ Correct!') {
       setCountdown(5);
       const interval = setInterval(() => {
         setCountdown((prev) => {
           if (prev === 1) {
             clearInterval(interval);
             setCountdown(null);
-            // Call onNext with result: true if correct, false if incorrect
-            onNext(feedback === '✅ Correct!');
+            onNext(true);
             return null;
           }
           return prev - 1;
@@ -80,7 +86,23 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [feedback, onNext]);
+    // If feedback is a React element (incorrect) and attempts === 2, start countdown
+    if (feedback && typeof feedback !== 'string' && attempts === 2) {
+      setCountdown(3);
+      const interval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === 1) {
+            clearInterval(interval);
+            setCountdown(null);
+            onNext(false);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [feedback, onNext, attempts]);
 
   const handleSpeakWord = () => {
     if (!word) return;
@@ -149,21 +171,29 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
         setFeedback('✅ Correct!');
         speak('Correct!');
       } else {
-        setFeedback(
-          <span>
-            ❌ Incorrect.<br />
-            <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
-            <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
-          </span>
-        );
-        // Speak the result, then "You spelled out ...", then spell the word
-        speak(`Incorrect. The correct spelling is ${word}.`);
-        setTimeout(() => {
-          speak(`You spelled out ${transcript}`);
-          setTimeout(() => {
-            speak(word.split('').join(' '));
-          }, 1200);
-        }, 1200);
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        if (newAttempts < 2) {
+          setFeedback(
+            <span>
+              ❌ Incorrect.<br />
+              <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
+              <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
+              <br />Try again! (Attempt {newAttempts} of 2)
+            </span>
+          );
+          speak(`Incorrect. The correct spelling is ${word}. Try again.`);
+        } else {
+          setFeedback(
+            <span>
+              ❌ Incorrect.<br />
+              <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>{word}</span><br />
+              <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
+              <br />No more attempts!
+            </span>
+          );
+          speak(`Incorrect. The correct spelling is ${word}. No more attempts.`);
+        }
       }
     };
     recognition.onerror = (event) => {
