@@ -1,6 +1,18 @@
 import React, { useRef, useState, useEffect } from 'react';
 
+// Normalize: remove non-letters, lowercase
 const normalize = (str) => str.replace(/[^a-zA-Z]/g, '').toLowerCase();
+
+// Convert a spoken string like "C A T" or "c a t" to "cat"
+function spokenToLetters(str) {
+  // Remove punctuation, split by spaces, join letters
+  return str
+    .replace(/[^a-zA-Z ]/g, '')
+    .split(' ')
+    .map(s => s.trim().toLowerCase())
+    .filter(Boolean)
+    .join('');
+}
 
 // Chrome-compatible speech synthesis workaround: cancel before speak
 function speak(text) {
@@ -94,14 +106,49 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
       const transcript = event.results[0][0].transcript;
       setSpokenText(transcript);
       setIsListening(false);
-      // Check spelling
-      let resultText;
-      if (normalize(transcript) === normalize(word)) {
-        resultText = 'Correct!';
+      // Strict letter-by-letter enforcement
+      const correct = normalize(word);
+      // Split transcript into tokens (by space)
+      const tokens = transcript.replace(/[^a-zA-Z ]/g, '').split(' ').map(s => s.trim().toLowerCase()).filter(Boolean);
+      // If only one token and it matches the word, reject
+      if (tokens.length === 1 && tokens[0] === correct) {
+        setFeedback(
+          <span>
+            ❌ Please spell the word <b>letter by letter</b> (e.g., "C A T"), not as a whole word.<br />
+            Try again!
+          </span>
+        );
+        speak('Please spell the word letter by letter, not as a whole word. Try again.');
+        return;
+      }
+      // If number of tokens doesn't match word length, reject
+      if (tokens.length !== correct.length) {
+        setFeedback(
+          <span>
+            ❌ Please spell out <b>each letter</b> of the word, one at a time. You said {tokens.length} letter{tokens.length === 1 ? '' : 's'}, but the word has {correct.length}.<br />
+            Try again!
+          </span>
+        );
+        speak('Please spell out each letter of the word, one at a time. Try again.');
+        return;
+      }
+      // If any token is not a single letter, reject
+      if (!tokens.every(t => t.length === 1 && /^[a-z]$/.test(t))) {
+        setFeedback(
+          <span>
+            ❌ Each part must be a single letter (A-Z).<br />
+            Try again!
+          </span>
+        );
+        speak('Each part must be a single letter. Try again.');
+        return;
+      }
+      // Join tokens and compare
+      const spelled = tokens.join('');
+      if (spelled === correct) {
         setFeedback('✅ Correct!');
-        speak(resultText);
+        speak('Correct!');
       } else {
-        resultText = `Incorrect. The correct spelling is ${word}.`;
         setFeedback(
           <span>
             ❌ Incorrect.<br />
@@ -110,7 +157,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
           </span>
         );
         // Speak the result, then "You spelled out ...", then spell the word
-        speak(resultText);
+        speak(`Incorrect. The correct spelling is ${word}.`);
         setTimeout(() => {
           speak(`You spelled out ${transcript}`);
           setTimeout(() => {
@@ -154,7 +201,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
         )}
       </div>
       {/* Change Next Turn button to call onNext with null (manual advance) */}
-      <button onClick={() => onNext(null)} disabled={countdown !== null}>Next Turn</button>
+      <button onClick={() => onNext(false)} disabled={countdown !== null}>Next Turn</button>
     </div>
   );
 };
