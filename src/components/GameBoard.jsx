@@ -89,6 +89,7 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
       if (normalize(transcript) === normalize(word)) {
         resultText = 'Correct!';
         setFeedback('✅ Correct!');
+        speak(resultText);
       } else {
         resultText = `Incorrect. The correct spelling is ${word}.`;
         setFeedback(
@@ -98,13 +99,13 @@ const GameBoard = ({ players, currentPlayer, word, onNext }) => {
             <span style={{ letterSpacing: '0.5em', fontFamily: 'monospace' }}>{word.toUpperCase().split('').join(' ')}</span>
           </span>
         );
-      }
-      // Speak the result
-      speak(resultText);
-      // If incorrect, spell out the word letter by letter
-      if (normalize(transcript) !== normalize(word)) {
+        // Speak the result, then "You spelled out ...", then spell the word
+        speak(resultText);
         setTimeout(() => {
-          speak(word.split('').join(' '));
+          speak(`You spelled out ${transcript}`);
+          setTimeout(() => {
+            speak(word.split('').join(' '));
+          }, 1200);
         }, 1200);
       }
     };
